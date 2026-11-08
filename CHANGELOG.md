@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added a brief, once-per-session NeonWorth title reveal with original neon lighting, immediate dismissal and Quiet/reduced-motion support.
 - Refined the project introduction around its cyberpunk neon design, Matrix-inspired binary rain and personal finance workflows; clarified the demo and ChatGPT entry points.
 
 ## 0.2.0-alpha.1

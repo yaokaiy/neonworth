@@ -1,0 +1,69 @@
+/* Motion animates this isolated sibling temporarily. Its resting state and
+   native animation endpoint are hidden, including when JavaScript stops. */
+.launch-intro {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  place-items: center;
+  overflow: hidden;
+  isolation: isolate;
+  pointer-events: auto;
+  user-select: none;
+  opacity: 0;
+  visibility: hidden;
+  background: var(--paper);
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  cursor: default;
+}
+.launch-intro__light {
+  position: relative;
+  width: min(640px, 86vw);
+  height: 240px;
+  display: grid;
+  place-items: start center;
+}
+.launch-intro__tube {
+  position: absolute;
+  top: 18px;
+  width: 100%;
+  height: 4px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, var(--decor-cyan), var(--ink) 34%, var(--violet) 72%, var(--decor-ember));
+  box-shadow: 0 0 4px var(--ink), 0 0 17px var(--decor-cyan), 0 3px 42px color-mix(in srgb, var(--violet) 65%, transparent);
+  transform-origin: 50% 50%;
+  transform: scaleX(0);
+  opacity: 0;
+}
+.launch-intro__spill {
+  position: absolute;
+  inset: 20px -12% 0;
+  background: radial-gradient(ellipse 48% 100% at 35% 0, color-mix(in srgb, var(--decor-cyan) 28%, transparent), transparent 90%),
+    radial-gradient(ellipse 44% 90% at 75% 0, color-mix(in srgb, var(--violet) 25%, transparent), transparent 90%),
+    radial-gradient(ellipse 18% 52% at 88% 0, color-mix(in srgb, var(--decor-ember) 12%, transparent), transparent);
+  transform-origin: 50% 0;
+  transform: scaleY(0);
+  opacity: 0;
+}
+.launch-intro__title {
+  position: relative;
+  margin-top: 72px;
+  color: var(--ink);
+  font-family: var(--font-display), sans-serif;
+  font-size: clamp(38px, 8vw, 70px);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -.045em;
+  text-shadow: 0 0 22px color-mix(in srgb, var(--decor-cyan) 22%, transparent);
+  opacity: 0;
+}
+@media screen and (prefers-reduced-motion: no-preference) and (forced-colors: none) {
+  body:has(.app.unified-dashboard.personal-workspace.personal-experience) .launch-intro {
+    display: grid;
+  }
+}

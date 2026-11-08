@@ -89,16 +89,18 @@ assert.equal(blocked.context().savePreferences({...DEFAULT_WORKSPACE_PREFERENCES
 
 // Execute the server layout's actual JSX for every existing destination. The
 // background is an unkeyed sibling preceding route children, never their owner.
-const Provider=()=>null,Background=()=>null;
-const Layout=compile('layout','RootLayout',{React,WorkspacePreferencesProvider:Provider,WorkspaceBackground:Background});
+const Provider=()=>null,Background=()=>null,Intro=()=>null;
+const Layout=compile('layout','RootLayout',{React,WorkspacePreferencesProvider:Provider,WorkspaceBackground:Background,LaunchIntro:Intro});
 assert.notEqual(asts.layout.statements[0]?.expression?.text,'use client','RootLayout remains a server component');
 for(const report of WORKSPACE_REPORTS){
  const child=React.createElement('main',{key:report.id},report.label),tree=Layout({children:child});
  const body=React.Children.toArray(tree.props.children).find(node=>node.type==='body');
  assert.ok(body);assert.equal(body.props.children.type,Provider);assert.equal(body.props.children.key,null);
- const [background,content]=body.props.children.props.children;
+ const [background,intro,content]=body.props.children.props.children;
  assert.equal(background.type,Background);assert.equal(background.key,null);assert.equal(content,child);
  assert.deepEqual(background.props,{},'No route key/props can restart the layout background');
+ assert.equal(intro.type,Intro);assert.equal(intro.key,null);
+ assert.deepEqual(intro.props,{},'The layout intro receives no financial records, route keys or display values');
 }
 assert.doesNotMatch(sources.page,/TerminalRainBackdrop|data-atmosphere=/,'No report-specific rain owner remains');
 for(const route of ['goals','year-in-review']){

@@ -10,3 +10,4 @@ Neonworth is an open-source, single-user personal finance workspace. It imports 
 - Preserve the dark neon design, readable financial text, semantic status colors and reduced-motion/quiet behavior. Do not animate financial values or chart geometry.
 - Use the pinned toolchain. Run regression, type, credential-scan and build checks for releases. Record browser verification separately from terminal checks.
 - Prefer bounded changes and mature installed components. Do not replace financial rules with visual shortcuts or hide unresolved accounting issues.
+- For new animated interactions, reuse installed Motion APIs and native browser controls before adding custom playback, presence or gesture machinery. Measure the emitted bundle cost and preserve the shared motion/privacy policies.

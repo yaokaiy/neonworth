@@ -25,6 +25,11 @@ assert.deepEqual(roots.map(({exportName,referenceId,kind})=>({exportName,referen
 ]);
 assert.deepEqual([...new Set(roots.flatMap(root=>root.dependencies.js))],['/preferences.js','/shared.js','/background.js','/segments.js'],'Both independent application and framework groups participate');
 assert.deepEqual(resolve({layoutSource:layout(false)}).map(root=>root.exportName),['WorkspacePreferencesProvider','LayoutSegmentProvider'],'The unchanged baseline has no background root, but includes framework layout hydration');
+const withIntro=layout(true).replace("import './globals.css';", "import './globals.css';import { LaunchIntro } from './launch-intro';").replace('<WorkspaceBackground/>','<WorkspaceBackground/><LaunchIntro/>');
+const introGroup={js:['/intro.js','/shared.js'],css:['/intro.css']};
+const introRoots=resolve({layoutSource:withIntro,serverSource:server+`;const launch=${register('LaunchIntro','cafe123')};`,clientReferenceDeps:{...groups,cafe123:introGroup}});
+assert.ok(introRoots.some(root=>root.exportName==='LaunchIntro'&&root.dependencies===introGroup),'The optional launch decoration counts toward the measured eager layout graph');
+assert.throws(()=>resolve({layoutSource:withIntro}),error=>error.code==='LAYOUT_GRAPH_UNRESOLVED','A missing launch reference must not silently undercount the eager graph');
 const quoted=server.replaceAll('`','"');assert.deepEqual(resolve({serverSource:quoted}),roots,'Quote style does not change static registrations');
 const decoy=`/* ${register('WorkspaceBackground','cccccc')} */ const text=${JSON.stringify(register('WorkspaceBackground','bbbbbb'))};`;
 assert.deepEqual(resolve({serverSource:server+decoy}),roots,'Comments and string contents are never executable registration evidence');

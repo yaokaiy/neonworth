@@ -46,6 +46,8 @@ Before increasing limits, measure payload size, Worker memory/CPU and browser in
 
 Financial values and chart geometry are static. Binary rain is isolated from report layout and pauses for quiet/reduced-motion preferences, hidden tabs and other supported visibility conditions. CSS color roles distinguish financial data and status from decoration. Amount hiding is a display control; it is not anonymization or encryption.
 
+The optional launch reveal is a separate layout sibling, lazy-loaded after its once-per-session and motion-policy checks. Motion's React mini API animates only that scene; native button behavior handles skipping it. Loading and rendering financial records proceed independently. Its implementation and pending desktop checks are documented in [the launch guide](LAUNCH_INTRO.md).
+
 ## Testing
 
 All public tests and examples use synthetic records. Domain regressions cover accounting, scope, corrections and source evidence. Storage tests cover concurrency, corruption, recovery and independent-record preservation. Authentication tests cover denial cases. Browser keyboard, privacy and responsive checks remain separate evidence from server rendering and type checks.

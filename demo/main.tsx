@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import Home from '../app/page';
 import { WorkspacePreferencesProvider } from '../app/workspace-preferences';
 import { WorkspaceBackground } from '../app/workspace-background';
+import { LaunchIntro } from '../app/launch-intro';
 import { WORKSPACE_PREFERENCES_KEY, LEGACY_WORKSPACE_PREFERENCES_KEY } from '../lib/workspace-preferences';
 import '../app/globals.css';
 import '../app/cyberpunk.css';
@@ -30,6 +31,7 @@ function DemoBanner() {
 function Demo() {
   return <WorkspacePreferencesProvider>
     <WorkspaceBackground/>
+    <LaunchIntro/>
     <Home workspaceNotice={<DemoBanner/>}/>
   </WorkspacePreferencesProvider>;
 }

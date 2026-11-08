@@ -6,6 +6,7 @@ Neonworth's original application code is MIT licensed. Dependencies retain their
 - Copied shadcn/ui component implementations: MIT; see `vendor/shadcn-ui.LICENSE`.
 - Vendored shadcn Tailwind styles: preserve `vendor/shadcn-tailwind-4.13.0.LICENSE.md`.
 - Sites Vite integration: MIT-licensed upstream starter implementation, with its retained license in `profiles/sites/sites-vite-plugin.LICENSE`.
-- React, Radix UI, Recharts, Lucide and other installed dependencies retain the licenses included in their respective packages.
+- Motion launch animations: MIT; distributed Motion, Framer Motion, motion-dom and motion-utils notices are retained in `vendor/motion.LICENSE`.
+- React, Motion, Radix UI, Recharts, Lucide and other installed dependencies retain the licenses included in their respective packages.
 
 Neonworth's binary rain, report illustrations and neon treatments are local CSS, SVG and canvas implementations. They do not bundle paid React Bits Pro component source or require a commercial animation subscription.

@@ -15,12 +15,16 @@ function UnavailableIntro({ onDone }: IntroSceneProps) {
 }
 export const LAUNCH_INTRO_KEY = 'neonworth-launch-intro-seen';
 const START_GRACE_MS = 2500;
+const PAINT_GRACE_MS = 350;
 const SHELL = '.app.unified-dashboard.personal-workspace.personal-experience';
 
 export function launchIntroEligible(view: Window, doc: Document) {
   try {
     const age = view.performance.now();
+    const paint = view.performance.getEntriesByType('paint').find(entry => entry.name === 'first-contentful-paint');
+    const freshPaint = !paint || (Number.isFinite(paint.startTime) && age >= paint.startTime && age - paint.startTime <= PAINT_GRACE_MS);
     return Number.isFinite(age) && age >= 0 && age <= START_GRACE_MS
+      && freshPaint
       && !doc.hidden && doc.hasFocus() && !view.matchMedia('print').matches
       && !view.navigator.userActivation?.hasBeenActive && Boolean(doc.querySelector(SHELL));
   } catch { return false; }
@@ -73,7 +77,8 @@ export function LaunchIntro() {
       // During playback the native button consumes the completed pointer click.
       for (const event of ['pointerdown', 'touchstart']) listen(document, event, () => { if (!playing.current) dismiss(); });
       for (const event of ['keydown', 'wheel']) listen(document, event, dismiss);
-      for (const event of ['blur', 'pagehide', 'beforeprint']) listen(window, event, dismiss);
+      for (const event of ['pagehide', 'beforeprint']) listen(window, event, dismiss);
+      listen(window, 'blur', event => { if (event.target === window) dismiss(); });
       listen(window, 'pageshow', event => { if ((event as PageTransitionEvent).persisted) dismiss(); });
       listen(document, 'visibilitychange', () => { if (document.hidden) dismiss(); });
     } catch { dismiss(); }

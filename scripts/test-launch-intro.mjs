@@ -21,18 +21,18 @@ class Events{
  listeners=new Map();
  addEventListener(type,fn,options){assert.equal(options.capture,true);assert.equal(options.passive,true);if(!this.listeners.has(type))this.listeners.set(type,new Set());this.listeners.get(type).add(fn);}
  removeEventListener(type,fn){this.listeners.get(type)?.delete(fn);}
- emit(type,extra={}){const event={preventDefault(){assert.fail('Policy listeners must never consume underlying actions')},stopPropagation(){assert.fail('Policy listeners must not trap events')},...extra};for(const fn of this.listeners.get(type)||[])fn(event);}
+ emit(type,extra={}){const event={target:this,preventDefault(){assert.fail('Policy listeners must never consume underlying actions')},stopPropagation(){assert.fail('Policy listeners must not trap events')},...extra};for(const fn of this.listeners.get(type)||[])fn(event);}
  count(){return [...this.listeners.values()].reduce((sum,list)=>sum+list.size,0);}
 }
 function browser(){
  const window=new Events(),document=new Events(),stored=new Map();
- let age=100,focused=true,printing=false,shell=true,writes=0;
+ let age=100,paintTime=50,focused=true,printing=false,shell=true,writes=0;
  window.sessionStorage={getItem:key=>stored.get(key)??null,setItem:(key,value)=>{writes++;stored.set(key,value)}};
- window.performance={now:()=>age};window.navigator={userActivation:{hasBeenActive:false}};
+ window.performance={now:()=>age,getEntriesByType:type=>{assert.equal(type,'paint');return paintTime===null?[]:[{name:'first-contentful-paint',startTime:paintTime}]}};window.navigator={userActivation:{hasBeenActive:false}};
  window.matchMedia=query=>{assert.equal(query,'print');return{matches:printing}};
  window.setTimeout=window.requestAnimationFrame=window.fetch=()=>assert.fail('Intro rules must not own animation timers, frames or network');
  document.hidden=false;document.hasFocus=()=>focused;document.querySelector=selector=>{assert.equal(selector,'.app.unified-dashboard.personal-workspace.personal-experience');return shell?{}:null;};
- return{window,document,stored,writes:()=>writes,age:value=>{age=value},focus:value=>{focused=value},print:value=>{printing=value},shell:value=>{shell=value}};
+ return{window,document,stored,writes:()=>writes,age:value=>{age=value},paint:value=>{paintTime=value},focus:value=>{focused=value},print:value=>{printing=value},shell:value=>{shell=value}};
 }
 function hooks(env,initial={ready:false,enabled:false}){
  let cursor=0,policy=initial;const cells=[],effects=[],pending=[];
@@ -67,6 +67,12 @@ const quietEnv=browser(),quiet=hooks(quietEnv,{ready:true,enabled:false});quiet.
 for(const modify of [b=>b.age(2501),b=>b.focus(false),b=>b.print(true),b=>b.shell(false),b=>{b.document.hidden=true},b=>{b.window.navigator.userActivation.hasBeenActive=true},b=>b.age(NaN)]){
  const b=browser();modify(b);const h=hooks(b,{ready:true,enabled:true});h.render();assert.equal(h.render(),null);assert.equal(b.stored.get(h.LAUNCH_INTRO_KEY),'1','Skipped decisions are consumed');assertTerminal(b,h);h.dispose();
 }
+for(const modify of [b=>{b.age(2400);b.paint(100)},b=>b.paint(NaN),b=>b.paint(101),b=>{b.window.performance.getEntriesByType=()=>{throw new Error('Unavailable timing')}}]){
+ const b=browser();modify(b);const h=hooks(b,{ready:true,enabled:true});h.render();assert.equal(h.render(),null,'An already-painted page or invalid timing must not receive a late cover');assertTerminal(b,h);h.dispose();
+}
+for(const paint of [2300,null]){
+ const b=browser();b.age(2400);b.paint(paint);const h=hooks(b,{ready:true,enabled:true});h.render();assert.ok(h.render(),'A slow initial load may still reveal before its first paint or immediately after it');h.dispose();
+}
 for(const broken of ['getter','get','set','noPersistence']){
  const b=browser();if(broken==='getter')Object.defineProperty(b.window,'sessionStorage',{get(){throw new Error('blocked')}});
  else if(broken==='get')b.window.sessionStorage.getItem=()=>{throw new Error('blocked')};
@@ -84,6 +90,7 @@ for(const type of ['keydown','wheel','blur','pagehide','beforeprint','visibility
  assert.equal(h.render(),null,`${type} dismisses`);assertTerminal(b,h);h.dispose();
 }
 // A pointer during the optional chunk download skips without eating the action.
+const focusEnv=browser(),focusRun=hooks(focusEnv,{ready:true,enabled:true});focusRun.render();focusRun.render().props.children.props.onStart();focusEnv.window.emit('blur',{target:{}});assert.ok(focusRun.render(),'A descendant blur is not a window blur');focusEnv.window.emit('blur');assert.equal(focusRun.render(),null);assertTerminal(focusEnv,focusRun);focusRun.dispose();
 const pendingEnv=browser(),pendingRun=hooks(pendingEnv,{ready:true,enabled:true});pendingRun.render();assert.ok(pendingRun.render());pendingEnv.document.emit('pointerdown');assert.equal(pendingRun.render(),null);assertTerminal(pendingEnv,pendingRun);pendingRun.dispose();
 // Once the native cover is playing, its own click handles pointer dismissal.
 const activeEnv=browser(),activeRun=hooks(activeEnv,{ready:true,enabled:true});activeRun.render();activeRun.render().props.children.props.onStart();activeEnv.document.emit('pointerdown');assert.ok(activeRun.render());activeRun.dispose();
@@ -121,6 +128,7 @@ for(const mutation of [b=>b.age(3000),b=>{b.window.navigator.userActivation.hasB
  component.IntroScene({onDone(){skipped++},onStart(){assert.fail('Skipped scene cannot start')},canStart:()=>real.launchIntroEligible(b.window,b.document)});effects[0]();assert.equal(skipped,1);
 }
 const completedEnv=browser(),completedRun=hooks(completedEnv,{ready:true,enabled:true});completedRun.render();const completedProps=completedRun.render().props.children.props;
+const panEffects=[],panRun=compile({React,useEffect:fn=>panEffects.push(fn),useAnimate:()=>[scope,()=>assert.fail('Only the native pointer-cancel contract is under test')]},true);let panDismissed=0;const panButton=panRun.IntroScene({onDone(){panDismissed++},onStart(){},canStart:()=>false});panButton.props.onPointerCancel();assert.equal(panDismissed,1,'A browser-cancelled touch gesture dismisses without implementing gesture recognition');
 const completedEffects=[],completedControls=compile({React,useEffect:fn=>completedEffects.push(fn),useAnimate:()=>[scope,()=>Object.assign(Promise.resolve(),{stop(){}})]},true);
 completedControls.IntroScene(completedProps);const completedCleanup=completedEffects[0]();await Promise.resolve();await Promise.resolve();assertTerminal(completedEnv,completedRun);completedCleanup();completedRun.dispose();
 

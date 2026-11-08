@@ -35,6 +35,7 @@ export function IntroScene({ onDone, onStart, canStart }: IntroSceneProps) {
   }, [animate, onDone, onStart, canStart, scope]);
 
   return <button ref={scope} type="button" tabIndex={-1} className="launch-intro" aria-label="Skip introduction"
+    onPointerCancel={onDone}
     onClick={event => { event.preventDefault(); event.stopPropagation(); onDone(); }}>
     <span className="launch-intro__light" aria-hidden="true">
       <span className="launch-intro__tube" />

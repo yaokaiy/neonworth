@@ -1,7 +1,7 @@
 import { Renderer, Program, Triangle, Mesh } from 'ogl';
 import type { LaunchLightingSample } from './launch-lighting';
 
-// Original finite-line light model. OGL (Unlicense) provides the renderer,
+// Original layered elliptical light model. OGL (Unlicense) provides the renderer,
 // shader program and fullscreen triangle: https://github.com/oframe/ogl
 // No React Bits/Pro shader or component implementation is incorporated.
 export const NEON_FIELD_LIMITS = Object.freeze({ maxDpr: 2, maxPixels: 3_000_000, maxDimension: 4096 });
@@ -30,45 +30,75 @@ uniform float uExtent;
 uniform float uReach;
 uniform float uRoom;
 uniform float uSecondary;
-const float PI = 3.14159265359;
-
 vec3 toDisplay(vec3 radiance) {
   vec3 mapped = max(radiance, vec3(0.0)) / (1.0 + max(radiance, vec3(0.0)));
   return mix(12.92 * mapped, 1.055 * pow(mapped, vec3(1.0 / 2.4)) - .055,
     step(vec3(.0031308), mapped));
 }
+float ellipticalLobe(vec2 p, vec2 radius, float shoulder) {
+  vec2 q = p / max(radius, vec2(1.0));
+  return exp(-shoulder * dot(q, q));
+}
 vec3 sourceLight(vec2 p, float origin, float direction, float voltage, float room, float echo) {
   float y = (p.y - origin * uCssSize.y) * direction;
   float halfLength = .54 * uCssSize.x * uExtent;
-  float distanceToLine = length(vec2(max(abs(p.x) - halfLength, 0.0), y));
+  float lateralExcess = max(abs(p.x) - halfLength, 0.0);
+  float distanceToLine = length(vec2(lateralExcess, y));
   float pixel = max(.55, uCssSize.y / uResolution.y);
-  float core = 1.0 - smoothstep(.52, .52 + pixel, distanceToLine);
-  float nearHalo = exp(-distanceToLine / 3.3);
-  float tail = exp(-distanceToLine / 17.0);
+  // A three-CSS-pixel luminous capsule, not a one-pixel laser. Its halo has
+  // several optical scales; bloom width does not stretch with the viewport.
+  float core = 1.0 - smoothstep(1.5 - pixel * .5, 1.5 + pixel * .5, distanceToLine);
+  float tight = exp(-.5 * pow(distanceToLine / 3.2, 2.0));
+  float bloom = exp(-.5 * pow(distanceToLine / 10.0, 2.0));
+  float haze = exp(-.5 * pow(distanceToLine / 28.0, 2.0));
   float segment = smoothstep(0.0, .015, uExtent);
-  vec3 coreColor = mix(vec3(1.0, .78, .94), vec3(.36, .12, 1.0), echo);
-  vec3 haloColor = mix(vec3(1.0, .025, .32), vec3(.28, .035, 1.0), echo);
-  vec3 localLight = voltage * segment * (coreColor * core * 3.1 + haloColor * nearHalo * .48 + haloColor * tail * .036);
+  vec3 coreColor = vec3(1.0, .54, .96);
+  vec3 haloColor = vec3(1.0, .11, .69);
+  // Calibrate the primary's ignition before HDR exposure: linear .08 voltage
+  // remains too bright after tone mapping. Cubic emission restores its deep
+  // troughs while steady voltage1 and the smooth lower lamp stay unchanged.
+  float emission = mix(voltage * voltage * voltage, voltage, echo);
+  vec3 localLight = emission * segment * (coreColor * core * 16.0
+    + haloColor * (tight * 1.9 + bloom * .27 + haze * .018));
 
-  // Angular extent of a finite line, with inverse-square-like attenuation.
-  // The broad field follows room, never the two ignition voltage strikes.
+  // The broad footprint is genuinely two-dimensional even when the tube
+  // extends beyond both edges. Elliptical iso-illumination curves go deeper
+  // at the centre and retreat at the sides. A mixture of smooth lobes gives
+  // a bright pink near field, violet shoulder and a low-energy long tail;
+  // there is no contour stroke, clipped reveal edge or linear colour band.
   float down = max(y, 0.0);
-  float angular = (atan((halfLength - p.x) / max(down, 2.0)) + atan((halfLength + p.x) / max(down, 2.0))) / PI;
-  float scale = uCssSize.y * mix(.19, .065, echo);
-  float attenuation = 1.0 / (1.0 + pow(down / max(scale, 1.0), 2.0));
-  float reach = max(20.0, uCssSize.y * mix(.76, .18, echo) * uReach);
-  float directionGate = smoothstep(-1.0, 9.0, y);
-  float reachGate = 1.0 - smoothstep(reach * .65, reach, down);
-  float field = room * max(angular, 0.0) * directionGate * attenuation * reachGate * exp(-down / max(scale * 2.0, 1.0));
-  return localLight + vec3(.21, .055, 1.0) * field * .078;
+  float width = uCssSize.x * .64 * pow(max(uExtent, 0.0), .82);
+  float spread = mix(.22, 1.0, uReach);
+  // Bound vertical radii by width as well as height, so portrait viewports
+  // retain a broad bowl instead of stretching the light into a tall column.
+  float pinkDepth = min(uCssSize.y * mix(.16, .125, echo), uCssSize.x * mix(.24, .20, echo)) * spread;
+  float violetDepth = min(uCssSize.y * mix(.37, .29, echo), uCssSize.x * mix(.68, .58, echo)) * spread;
+  float tailDepth = min(uCssSize.y * mix(.70, .56, echo), uCssSize.x * mix(1.40, 1.15, echo)) * spread;
+  vec2 fieldPoint = vec2(p.x, down);
+  float pink = ellipticalLobe(fieldPoint, vec2(width, pinkDepth), 2.0);
+  float violet = ellipticalLobe(fieldPoint, vec2(width * 1.025, violetDepth), 1.8);
+  float tail = ellipticalLobe(fieldPoint, vec2(width * 1.08, tailDepth), 1.5);
+  // Beyond the lit ends, soften onset into the room progressively. Keeping
+  // an eight-pixel gate there would draw a phantom horizontal spill edge
+  // across the still-unlit tube. Under the lit segment the gate stays tight.
+  float inward = smoothstep(-4.0, 4.0 + .65 * lateralExcess, y);
+  // The lower lamp keeps its bright core. Only its broad-field reach and
+  // radiance are restrained, instead of dimming the entire lamp to a hairline.
+  float field = room * segment * inward * mix(1.0, .65, echo);
+  vec3 spill = vec3(1.0, .14, .72) * pink * 3.2
+    + vec3(.28, .035, 1.0) * violet * .60
+    + vec3(.19, .035, .60) * tail * .075;
+  return localLight + spill * field;
 }
 void main() {
   vec2 p = vec2((vUv.x - .5) * uCssSize.x, (1.0 - vUv.y) * uCssSize.y);
   vec3 mainLight = toDisplay(sourceLight(p, uSources.x, 1.0, uPower, uRoom, 0.0));
-  // The recessed echo catches only after the main lamp stabilises. Applying
-  // its strength AFTER tone mapping prevents a white-hot second horizon.
-  vec3 echo = toDisplay(sourceLight(p, uSources.y, -1.0, uRoom * .72, uRoom, 1.0)) * uSecondary;
-  vec3 color = clamp(mainLight + echo, 0.0, 1.0);
+  // The second lamp catches with the smooth room envelope, not the primary
+  // ignition strikes. Display gain remains opt-in; use 1 for a lit mirror.
+  vec3 echo = toDisplay(sourceLight(p, uSources.y, -1.0, uRoom, uRoom, 1.0)) * uSecondary;
+  // Screen accumulation retains both coloured shoulders without adding two
+  // already-exposed fields into a clipped, flat bright band between the lamps.
+  vec3 color = 1.0 - (1.0 - mainLight) * (1.0 - echo);
   float peak = max(color.r, max(color.g, color.b));
   float dither = (fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715)))) - .5) / 255.0;
   color = clamp(color + dither * smoothstep(0.0, .015, peak), 0.0, 1.0);

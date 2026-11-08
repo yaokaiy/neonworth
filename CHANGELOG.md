@@ -2,9 +2,8 @@
 
 ## Unreleased
 
-- Recorded a native-Chrome reference study and a separate optical-revision workflow after the prior opening failed visual review. Elliptical spill, luminous cores and continuous colour falloff are required before the next candidate can receive visual approval.
-
-- Added an atmospheric, once-per-session NeonWorth opening with two localized ignition strikes, a dominant upper lamp, a recessed lower echo and barely visible lettering in deep shadow. An original OGL light field provides clean cores, bloom and falloff; Motion drives the 7.6-second sequence and its final 2.2-second fade, with a CSS fallback. Native skipping and Quiet/reduced-motion support remain available while financial data loads independently.
+- Reworked the opening after observing the public reference in desktop Chrome: two bright pink-white edge lamps cast layered elliptical pink/violet light around a flat, dark NeonWorth title. Width-bounded light depths retain their shape on phones. Corrected early spill seams, visible ignition contrast and CSS fallback gradient validity/clipping; sampled rendering and native Chrome application checks are recorded separately.
+- Added an atmospheric, once-per-session NeonWorth opening with two localized ignition strikes. An original OGL light field supplies the light while Motion drives the 7.6-second sequence and its final 2.2-second fade, with a softer CSS fallback. Native skipping and Quiet/reduced-motion support remain available while financial data loads independently.
 - Documented flexible neon design principles that give original artwork room for focused color, shadow and deliberate pacing while preserving readable financial information and stable controls.
 - Refined the project introduction around its cyberpunk neon design, Matrix-inspired binary rain and personal finance workflows; clarified the demo and ChatGPT entry points.
 

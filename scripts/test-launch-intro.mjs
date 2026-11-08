@@ -120,7 +120,7 @@ function sceneHarness({ available=true, healthy=true, immediate=false, throwCloc
  const code=compile({React,useEffect:fn=>effects.push(fn),useAnimate:()=>[scope,(target,keyframes,options)=>{calls.push({target,keyframes,options});return end;}],
    animateValue:(from,to,options)=>{if(throwClock)throw new Error('clock unavailable');calls.push({from,to,options});update=options.onUpdate;return{stop(){stopped++}}},
    LAUNCH_LIGHTING,sampleLaunchLighting,
-   createNeonLightField:(_canvas,options)=>{assert.equal(options.secondaryStrength,.18);return available?{render:sample=>{samples.push(sample);return healthy},dispose(){disposed++}}:null}},true);
+   createNeonLightField:(_canvas,options)=>{assert.equal(options.secondaryStrength,1);return available?{render:sample=>{samples.push(sample);return healthy},dispose(){disposed++}}:null}},true);
  const props={onDone(){done++},onStart(){started++},canStart:()=>true};
  return{code,props,root,effects,calls,samples,styles,get done(){return done},get started(){return started},get disposed(){return disposed},get stopped(){return stopped},
    start(next=props){const button=code.IntroScene(next),cleanup=effects.at(-1)();return{button,cleanup}},tick:t=>update(t),finish:()=>finish?.()};

@@ -30,11 +30,12 @@ export function IntroScene({ onDone, onStart, canStart }: IntroSceneProps) {
       const bottom = root.querySelector<HTMLElement>('.launch-intro__tube--echo');
       if (canvas && top && bottom) {
         field = createNeonLightField(canvas, {
-          secondaryStrength: .18,
+          secondaryStrength: 1,
           measure: () => {
             const frame = canvas.getBoundingClientRect();
-            return { top: (top.getBoundingClientRect().top - frame.top) / frame.height,
-              bottom: (bottom.getBoundingClientRect().top - frame.top) / frame.height };
+            const upper = top.getBoundingClientRect(), lower = bottom.getBoundingClientRect();
+            return { top: (upper.top + upper.height / 2 - frame.top) / frame.height,
+              bottom: (lower.top + lower.height / 2 - frame.top) / frame.height };
           },
         });
       }

@@ -1,10 +1,12 @@
-/* A viewport-wide light environment. Motion owns the finite clock; the native
-   endpoint is hidden. Canvas and CSS fallback share the same measured lamps. */
+/* Viewport-edge lamps and inward-facing light. Motion supplies every changing
+   value; this CSS also supplies a two-dimensional approximation without WebGL. */
 .launch-intro {
   --launch-dark: color-mix(in srgb, var(--paper) 58%, #000);
-  --launch-horizon: 18%;
-  --launch-echo: 88%;
-  --launch-tube: color-mix(in srgb, var(--decor-magenta) 58%, var(--ink));
+  --launch-edge: clamp(24px, 5svh, 56px);
+  --launch-horizon: var(--launch-edge);
+  --launch-echo: calc(100% - var(--launch-edge));
+  --launch-tube: color-mix(in srgb, var(--ink) 82%, var(--decor-magenta));
+  --launch-halo: color-mix(in srgb, var(--decor-magenta) 80%, var(--violet));
   --launch-power: 0;
   --launch-extent: 0;
   --launch-reach: 0;
@@ -44,39 +46,79 @@
 .launch-intro[data-light-field="ready"] .launch-intro__spill { opacity: 0; }
 .launch-intro__tube {
   position: absolute;
+  z-index: 1;
   top: var(--launch-horizon);
   left: -4%;
   width: 108%;
-  height: 1px;
+  height: 3px;
+  border-radius: 2px;
   background: var(--launch-tube);
-  box-shadow: 0 0 2px var(--ink), 0 0 7px var(--launch-tube),
-    0 0 22px color-mix(in srgb, var(--decor-magenta) 38%, transparent);
+  box-shadow:
+    0 0 3px var(--launch-tube),
+    0 0 12px var(--launch-halo),
+    0 0 34px color-mix(in srgb, var(--launch-halo) 78%, transparent),
+    0 0 76px color-mix(in srgb, var(--violet) 28%, transparent);
   transform: scaleX(var(--launch-extent));
   transform-origin: 50% 50%;
   opacity: var(--launch-power);
 }
 .launch-intro__tube--echo {
   top: var(--launch-echo);
-  background: var(--violet);
-  box-shadow: 0 0 6px var(--violet), 0 -6px 24px color-mix(in srgb, var(--violet) 20%, transparent);
-  opacity: calc(var(--launch-room) * .18);
+  /* A secondary lamp still has a luminous core. Its shorter inward spill,
+     rather than an almost-invisible tube, establishes the spatial hierarchy. */
+  opacity: var(--launch-room);
 }
 .launch-intro__spill {
   position: absolute;
-  top: calc(var(--launch-horizon) + 1px);
-  bottom: 5%;
-  left: 0;
-  right: 0;
-  background: linear-gradient(180deg,
-    color-mix(in srgb, var(--violet) 27%, transparent),
-    color-mix(in srgb, var(--violet) 9%, transparent) 24%,
-    color-mix(in srgb, var(--violet) 2%, transparent) 60%, transparent 88%);
+  inset: 0;
   opacity: var(--launch-room);
-  transform: scaleY(var(--launch-reach));
+}
+.launch-intro__spill::before,
+.launch-intro__spill::after {
+  content: "";
+  position: absolute;
+  left: -50%;
+  width: 200%;
+  pointer-events: none;
+  transform: scale(var(--launch-extent), var(--launch-reach));
+}
+.launch-intro__spill::before {
+  top: calc(var(--launch-horizon) + 1.5px);
+  height: min(72svh, 760px);
+  background:
+    radial-gradient(ellipse 61.6vw min(15.84svh, 167.2px, 18vw) at 50% 0,
+      color-mix(in srgb, var(--launch-halo) 74%, transparent),
+      color-mix(in srgb, var(--launch-halo) 28%, transparent) 58%, transparent 100%),
+    radial-gradient(ellipse 71.5vw min(60.48svh, 638.4px, 72vw) at 50% 0,
+      color-mix(in srgb, var(--launch-halo) 64%, transparent),
+      color-mix(in srgb, var(--violet) 64%, transparent) 25%,
+      color-mix(in srgb, var(--violet) 25%, transparent) 55%,
+      color-mix(in srgb, var(--violet) 5%, transparent) 82%, transparent 100%),
+    radial-gradient(ellipse 88vw min(72svh, 760px) at 50% 0,
+      color-mix(in srgb, var(--violet) 15%, transparent),
+      color-mix(in srgb, var(--violet) 4%, transparent) 58%, transparent 100%);
   transform-origin: 50% 0;
+}
+.launch-intro__spill::after {
+  bottom: calc(100% - var(--launch-echo) - 1.5px);
+  height: min(54svh, 570px);
+  background:
+    radial-gradient(ellipse 60.5vw min(11.34svh, 119.7px, 16vw) at 50% 100%,
+      color-mix(in srgb, var(--launch-halo) 66%, transparent),
+      color-mix(in srgb, var(--launch-halo) 24%, transparent) 58%, transparent 100%),
+    radial-gradient(ellipse 69.3vw min(46.44svh, 490.2px, 66vw) at 50% 100%,
+      color-mix(in srgb, var(--launch-halo) 52%, transparent),
+      color-mix(in srgb, var(--violet) 46%, transparent) 27%,
+      color-mix(in srgb, var(--violet) 15%, transparent) 59%,
+      color-mix(in srgb, var(--violet) 3%, transparent) 84%, transparent 100%),
+    radial-gradient(ellipse 85.8vw min(54svh, 570px) at 50% 100%,
+      color-mix(in srgb, var(--violet) 11%, transparent),
+      color-mix(in srgb, var(--violet) 3%, transparent) 58%, transparent 100%);
+  transform-origin: 50% 100%;
 }
 .launch-intro__title {
   position: absolute;
+  z-index: 2;
   top: 54%;
   left: 50%;
   transform: translate(-50%, -50%);
@@ -85,7 +127,7 @@
   max-width: 88vw;
   font-family: var(--font-display), sans-serif;
   font-size: clamp(42px, 8vw, 92px);
-  font-weight: 560;
+  font-weight: 600;
   line-height: 1.15;
   letter-spacing: -.045em;
   white-space: nowrap;
@@ -94,15 +136,13 @@
 .launch-intro__title-shadow,
 .launch-intro__title-light { grid-area: 1 / 1; }
 .launch-intro__title-shadow {
-  color: color-mix(in srgb, var(--violet) 9%, var(--launch-dark));
-  text-shadow: 0 2px 1px #020207, 0 7px 5px #020207, 0 20px 30px #000;
+  color: color-mix(in srgb, var(--launch-dark) 55%, #000);
+  text-shadow: none;
 }
 .launch-intro__title-light {
   color: transparent;
   background: linear-gradient(180deg,
-    color-mix(in srgb, var(--violet) 68%, var(--launch-dark)) 0%,
-    color-mix(in srgb, var(--violet) 32%, var(--launch-dark)) 20%,
-    color-mix(in srgb, var(--violet) 7%, var(--launch-dark)) 54%, var(--launch-dark) 82%);
+    color-mix(in srgb, var(--ink) 12%, transparent), transparent 6%);
   background-clip: text;
   -webkit-background-clip: text;
   text-shadow: none;

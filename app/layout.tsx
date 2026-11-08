@@ -9,5 +9,6 @@ import "./warm-neon.css";
 import "./chart-bars.css";
 import { WorkspacePreferencesProvider } from "./workspace-preferences";
 import { WorkspaceBackground } from "./workspace-background";
+import { LaunchIntro } from "./launch-intro";
 export const metadata: Metadata = { title: "Neonworth — Your money, clearly", description: "Your private personal finance dashboard. Cash flow, spending, savings and net worth, without the noise.", icons: {icon:"/favicon.svg"} };
-export default function RootLayout({children}:{children:React.ReactNode}) { return <html lang="en"><head><link rel="preload" href="/fonts/space-grotesk-variable.woff2" as="font" type="font/woff2" crossOrigin="anonymous"/></head><body><WorkspacePreferencesProvider><WorkspaceBackground/>{children}</WorkspacePreferencesProvider></body></html> }
+export default function RootLayout({children}:{children:React.ReactNode}) { return <html lang="en"><head><link rel="preload" href="/fonts/space-grotesk-variable.woff2" as="font" type="font/woff2" crossOrigin="anonymous"/></head><body><WorkspacePreferencesProvider><WorkspaceBackground/><LaunchIntro/>{children}</WorkspacePreferencesProvider></body></html> }

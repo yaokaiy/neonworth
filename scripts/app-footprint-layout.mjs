@@ -5,6 +5,7 @@ import ts from 'typescript';
 const supported = new Map([
   ['WorkspacePreferencesProvider', './workspace-preferences'],
   ['WorkspaceBackground', './workspace-background'],
+  ['LaunchIntro', './launch-intro'],
 ]);
 const fail = message => { throw Object.assign(new Error(message), { code: 'LAYOUT_GRAPH_UNRESOLVED' }); };
 const literal = node => node && (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) ? node.text : undefined;

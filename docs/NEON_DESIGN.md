@@ -14,9 +14,9 @@ Color roles provide a shared vocabulary, not a checklist of hues. A focused viol
 
 ## Deliberate motion
 
-Allow generous, finite opening choreography: two localized ignition strikes, a growing light footprint, a sustained atmosphere and a slow fade into the selected workspace view. The strikes belong to the lamp's core and nearby halo; the wider field settles smoothly as the lit length expands. Choose timing for the scene's rhythm instead of imposing a tiny universal transition budget. This latitude does not authorize full-screen flashes, repeated surprise covers or delayed financial loading.
+Allow generous, finite opening choreography: two localized ignition strikes, a growing light footprint, a sustained atmosphere and a slow fade followed by the selected workspace view. The strikes belong to the lamp's core and nearby halo; the wider field settles smoothly as the lit length expands. Choose timing for the scene's rhythm instead of imposing a tiny universal transition budget. This latitude does not authorize full-screen flashes, repeated surprise covers or delayed financial loading.
 
-The launch remains once per tab session, immediately skippable through native controls, and excluded by Quiet and reduced-motion preferences. Preserve the existing visibility, forced-color, print and failure behavior. Loading and rendering reports proceed independently. Animate the isolated artwork, never financial values, chart geometry, the workspace shell or ancestors of dialogs. Existing background motion keeps its own pause and lifecycle policy.
+The launch runs on each full document open or reload, with no replay on internal report navigation, tab return or back/forward restoration of the same document. It is immediately skippable through native controls and excluded by Quiet and reduced-motion preferences. An opaque opening gate conceals the workspace until completion or skip, including the final artistic fade; the workspace must also be unavailable to pointer and keyboard input during that interval. Preserve the existing visibility, forced-color, print and failure behavior. Loading and rendering reports proceed independently. Animate the isolated artwork, never financial values, chart geometry, the workspace shell or ancestors of dialogs. Existing background motion keeps its own pause and lifecycle policy.
 
 ## Financial clarity
 

@@ -46,6 +46,9 @@ try {
   for(const path of DEMO_PUBLIC_ASSETS)writeFileSync(join(publicFixture,path),'synthetic asset');
   writeFileSync(join(publicFixture,'_headers'),'production only');
   assert.deepEqual(verifyDemoPublicAssets(publicFixture),DEMO_PUBLIC_ASSETS);
+  writeFileSync(join(publicFixture,'launch-gate.js'),'window.fetch("https://example.invalid")');
+  assert.throws(()=>verifyDemoPublicAssets(publicFixture),/Unadapted network access entered a public demo script/,'Raw classic bootstraps receive the same network isolation scan as bundled modules');
+  writeFileSync(join(publicFixture,'launch-gate.js'),'synthetic asset');
   writeFileSync(join(publicFixture,'private.json'),'synthetic forbidden fixture');
   assert.throws(()=>verifyDemoPublicAssets(publicFixture),/Unexpected public demo asset/);unlinkSync(join(publicFixture,'private.json'));
   mkdirSync(join(publicFixture,'private'));assert.throws(()=>verifyDemoPublicAssets(publicFixture),/Unexpected public demo asset directory/);rmSync(join(publicFixture,'private'),{recursive:true});

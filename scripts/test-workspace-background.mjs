@@ -90,10 +90,13 @@ assert.equal(blocked.context().savePreferences({...DEFAULT_WORKSPACE_PREFERENCES
 // Execute the server layout's actual JSX for every existing destination. The
 // background is an unkeyed sibling preceding route children, never their owner.
 const Provider=()=>null,Background=()=>null,Intro=()=>null;
-const Layout=compile('layout','RootLayout',{React,WorkspacePreferencesProvider:Provider,WorkspaceBackground:Background,LaunchIntro:Intro});
+const Layout=compile('layout','RootLayout',{React,headers:async()=>new Headers({'content-security-policy':"script-src 'self' 'nonce-syntheticnonce' 'strict-dynamic'"}),WorkspacePreferencesProvider:Provider,WorkspaceBackground:Background,LaunchIntro:Intro});
 assert.notEqual(asts.layout.statements[0]?.expression?.text,'use client','RootLayout remains a server component');
 for(const report of WORKSPACE_REPORTS){
- const child=React.createElement('main',{key:report.id},report.label),tree=Layout({children:child});
+ const child=React.createElement('main',{key:report.id},report.label),tree=await Layout({children:child});
+ const head=React.Children.toArray(tree.props.children).find(node=>node.type==='head');
+ const resources=React.Children.toArray(head.props.children),critical=resources.findIndex(node=>node.props.href==='/launch-gate.css'),bootstrap=resources.findIndex(node=>node.type==='script'&&node.props.src==='/launch-gate.js');
+ assert.ok(critical>=0&&bootstrap>critical,'Literal parser script follows its critical stylesheet');assert.equal(resources[bootstrap].props.nonce,'syntheticnonce','The parser script carries the trusted request CSP nonce');
  const body=React.Children.toArray(tree.props.children).find(node=>node.type==='body');
  assert.ok(body);assert.equal(body.props.children.type,Provider);assert.equal(body.props.children.key,null);
  const [background,intro,content]=body.props.children.props.children;

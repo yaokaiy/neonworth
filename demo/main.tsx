@@ -31,7 +31,7 @@ function DemoBanner() {
 function Demo() {
   return <WorkspacePreferencesProvider>
     <WorkspaceBackground/>
-    <LaunchIntro/>
+    <LaunchIntro externalGate/>
     <Home workspaceNotice={<DemoBanner/>}/>
   </WorkspacePreferencesProvider>;
 }

@@ -15,7 +15,9 @@ function UnavailableIntro({ onDone }: IntroSceneProps) {
 }
 export const LAUNCH_INTRO_KEY = 'neonworth-launch-intro-seen';
 const START_GRACE_MS = 2500;
-const PAINT_GRACE_MS = 350;
+// Cold GPU preparation is still part of the first opening. Any prior input
+// cancels it; the bounded paint/navigation windows prevent a late cover.
+const PAINT_GRACE_MS = 1000;
 const SHELL = '.app.unified-dashboard.personal-workspace.personal-experience';
 
 export function launchIntroEligible(view: Window, doc: Document) {

@@ -2,35 +2,67 @@
 
 import { useEffect } from 'react';
 import { useAnimate } from 'motion/react-mini';
+import { animate as animateValue } from 'motion';
+import { createNeonLightField } from './neon-light-field';
+import { LAUNCH_LIGHTING, sampleLaunchLighting } from './launch-lighting';
 import './launch-intro.css';
 
-// Original artwork inspired only by the public Neon Reveal visual concept:
-// https://pro.reactbits.dev/docs/components/neon-reveal
-// Motion owns scoped native animation; standard controls.stop() cleanup below
-// also covers the pinned mini implementation's unregistered scope controls:
-// https://motion.dev/docs/react-use-animate
+// Original light composition; OGL renders it and Motion owns its finite clock.
+// No paid component source is incorporated. Explicit control cleanup also
+// covers the pinned mini implementation's unregistered scope controls.
 export type IntroSceneProps = { onDone: () => void; onStart: () => void; canStart: () => boolean };
 export function IntroScene({ onDone, onStart, canStart }: IntroSceneProps) {
   const [scope, animate] = useAnimate<HTMLButtonElement>();
   useEffect(() => {
     let active = true;
-    const controls: Array<ReturnType<typeof animate>> = [];
-    const stop = () => { for (const control of controls) { try { control.stop(); } catch { /* Finish cleaning the remaining controls. */ } } };
+    let field: ReturnType<typeof createNeonLightField> = null;
+    const controls: Array<{ stop: () => void }> = [];
+    const stop = () => {
+      for (const control of controls) { try { control.stop(); } catch { /* Continue cleanup. */ } }
+      field?.dispose();
+      field = null;
+    };
     try {
-      if (!canStart()) { onDone(); return; }
-      // Root is always the last animation to finish. Its native endpoint is
-      // hidden, so the hit surface disappears even if JS cannot finish cleanup.
-      // Per-keyframe easing preserves the authored 4.6s-to-6.8s dissolve.
-      const end = animate(scope.current, {
-        opacity: [0, 1, 1, 0],
-        visibility: ['visible', 'visible', 'visible', 'hidden'],
-      }, { duration: 6.8, times: [0, .04, 4.6 / 6.8, 1], ease: ['easeOut', 'linear', 'easeInOut', 'linear'] });
+      if (!canStart() || !scope.current) { onDone(); return; }
+      const root = scope.current;
+      const canvas = root.querySelector<HTMLCanvasElement>('.launch-intro__canvas');
+      const top = root.querySelector<HTMLElement>('.launch-intro__tube--primary');
+      const bottom = root.querySelector<HTMLElement>('.launch-intro__tube--echo');
+      if (canvas && top && bottom) {
+        field = createNeonLightField(canvas, {
+          secondaryStrength: .18,
+          measure: () => {
+            const frame = canvas.getBoundingClientRect();
+            return { top: (top.getBoundingClientRect().top - frame.top) / frame.height,
+              bottom: (bottom.getBoundingClientRect().top - frame.top) / frame.height };
+          },
+        });
+      }
+      const paint = (seconds: number) => {
+        if (!active) return;
+        const sample = sampleLaunchLighting(seconds);
+        // The scene dissolves once, above both the canvas and DOM fallback.
+        root.style.opacity = String(sample.scene);
+        for (const key of ['power', 'extent', 'reach', 'room', 'rim'] as const) {
+          root.style.setProperty(`--launch-${key}`, String(sample[key]));
+        }
+        const ready = field?.render(sample) ?? false;
+        root.dataset.lightField = ready ? 'ready' : 'fallback';
+        if (!ready && field) { field.dispose(); field = null; }
+      };
+      // Compile and draw before starting either clock, so initial compilation
+      // cannot eat the ignition strikes. Missing WebGL uses the same CSS clock.
+      paint(0);
+      if (!canStart()) { stop(); onDone(); return; }
+      const end = animate(root, { visibility: ['visible', 'visible', 'hidden'] },
+        { duration: LAUNCH_LIGHTING.duration, times: [0, .999, 1], ease: 'linear' });
       controls.push(end);
-      controls.push(animate('.launch-intro__tube', { transform: ['scaleX(0)', 'scaleX(1)'], opacity: [0, 1] }, { duration: 2.5, ease: 'easeInOut' }));
-      controls.push(animate('.launch-intro__spill', { transform: ['scaleY(.03)', 'scaleY(1)'], opacity: [0, 1] }, { delay: .35, duration: 3, ease: 'easeOut' }));
-      controls.push(animate('.launch-intro__title', { opacity: [0, .78] }, { delay: 1.2, duration: 2.15, ease: 'easeInOut' }));
-      controls.push(animate('.launch-intro__title-light', { opacity: [0, .34, .55, .4] }, { delay: 1.4, duration: 2.3, times: [0, .4, .76, 1], ease: 'easeInOut' }));
+      controls.push(animateValue(0, LAUNCH_LIGHTING.duration, {
+        duration: LAUNCH_LIGHTING.duration, ease: 'linear', onUpdate: paint,
+      }));
       onStart();
+      // The independent native endpoint hides the hit surface even if the JS
+      // light clock stalls. No overlay can remain as an invisible click trap.
       Promise.resolve(end).then(() => { if (active) onDone(); }, () => { if (active) onDone(); });
     } catch { stop(); onDone(); }
     return () => { active = false; stop(); };
@@ -40,8 +72,10 @@ export function IntroScene({ onDone, onStart, canStart }: IntroSceneProps) {
     onPointerCancel={onDone}
     onClick={event => { event.preventDefault(); event.stopPropagation(); onDone(); }}>
     <span className="launch-intro__light" aria-hidden="true">
-      <span className="launch-intro__tube" />
+      <canvas className="launch-intro__canvas" />
+      <span className="launch-intro__tube launch-intro__tube--primary" />
       <span className="launch-intro__spill" />
+      <span className="launch-intro__tube launch-intro__tube--echo" />
       <span className="launch-intro__title">
         <span className="launch-intro__title-shadow">NeonWorth</span>
         <span className="launch-intro__title-light">NeonWorth</span>
@@ -49,4 +83,3 @@ export function IntroScene({ onDone, onStart, canStart }: IntroSceneProps) {
     </span>
   </button>;
 }
-

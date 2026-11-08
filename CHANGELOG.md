@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Added an atmospheric, once-per-session NeonWorth opening: a dominant overhead neon lamp, barely visible lettering in deep shadow, and a longer, slow fade into the workspace. Native skipping and Quiet/reduced-motion support remain available while financial data loads independently.
+- Added an atmospheric, once-per-session NeonWorth opening with two localized ignition strikes, a dominant upper lamp, a recessed lower echo and barely visible lettering in deep shadow. An original OGL light field provides clean cores, bloom and falloff; Motion drives the 7.6-second sequence and its final 2.2-second fade, with a CSS fallback. Native skipping and Quiet/reduced-motion support remain available while financial data loads independently.
 - Documented flexible neon design principles that give original artwork room for focused color, shadow and deliberate pacing while preserving readable financial information and stable controls.
 - Refined the project introduction around its cyberpunk neon design, Matrix-inspired binary rain and personal finance workflows; clarified the demo and ChatGPT entry points.
 

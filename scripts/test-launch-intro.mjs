@@ -6,6 +6,7 @@ import ts from 'typescript';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { useAnimate as actualUseAnimate } from 'motion/react-mini';
+import { LAUNCH_LIGHTING, sampleLaunchLighting } from '../app/launch-lighting.ts';
 import { createRequire } from 'node:module';
 const postcss = createRequire(import.meta.resolve('vite/package.json'))('postcss');
 
@@ -67,11 +68,11 @@ const quietEnv=browser(),quiet=hooks(quietEnv,{ready:true,enabled:false});quiet.
 for(const modify of [b=>b.age(2501),b=>b.focus(false),b=>b.print(true),b=>b.shell(false),b=>{b.document.hidden=true},b=>{b.window.navigator.userActivation.hasBeenActive=true},b=>b.age(NaN)]){
  const b=browser();modify(b);const h=hooks(b,{ready:true,enabled:true});h.render();assert.equal(h.render(),null);assert.equal(b.stored.get(h.LAUNCH_INTRO_KEY),'1','Skipped decisions are consumed');assertTerminal(b,h);h.dispose();
 }
-for(const modify of [b=>{b.age(2400);b.paint(100)},b=>b.paint(NaN),b=>b.paint(101),b=>{b.window.performance.getEntriesByType=()=>{throw new Error('Unavailable timing')}}]){
+for(const modify of [b=>{b.age(2400);b.paint(100)},b=>{b.age(1101);b.paint(100)},b=>b.paint(NaN),b=>b.paint(101),b=>{b.window.performance.getEntriesByType=()=>{throw new Error('Unavailable timing')}}]){
  const b=browser();modify(b);const h=hooks(b,{ready:true,enabled:true});h.render();assert.equal(h.render(),null,'An already-painted page or invalid timing must not receive a late cover');assertTerminal(b,h);h.dispose();
 }
-for(const paint of [2300,null]){
- const b=browser();b.age(2400);b.paint(paint);const h=hooks(b,{ready:true,enabled:true});h.render();assert.ok(h.render(),'A slow initial load may still reveal before its first paint or immediately after it');h.dispose();
+for(const [age,paint] of [[800,100],[1100,100],[2400,2300],[2400,null]]){
+ const b=browser();b.age(age);b.paint(paint);const h=hooks(b,{ready:true,enabled:true});h.render();assert.ok(h.render(),'A slow initial load may still reveal before its first paint or immediately after it');h.dispose();
 }
 for(const broken of ['getter','get','set','noPersistence']){
  const b=browser();if(broken==='getter')Object.defineProperty(b.window,'sessionStorage',{get(){throw new Error('blocked')}});
@@ -106,35 +107,65 @@ const html=renderToStaticMarkup(React.createElement(realScene.IntroScene,{onDone
 assert.match(html,/<button[^>]*type="button"[^>]*tabindex="-1"[^>]*aria-label="Skip introduction"/);
 assert.match(html,/<span class="launch-intro__light" aria-hidden="true">/);assert.match(html,/>NeonWorth<\/span>/);assert.equal((html.match(/<button/g)||[]).length,1);assert.doesNotMatch(html,/autofocus|<h1|role="dialog"/i);
 
-// Execute the scene effect and native-button contract callback with scoped
-// controls. This is not real browser click-through or paint verification.
-const calls=[],effects=[],scope={current:{decorativeButton:true}};let finish,done=0,started=0,stoppedControls=0;
-const completion=new Promise(resolve=>{finish=resolve});completion.stop=()=>{stoppedControls++};
-const controls=compile({React,useEffect:fn=>effects.push(fn),useAnimate:()=>[scope,(target,keyframes,options)=>{calls.push({target,keyframes,options});return completion;}],useState:React.useState,useRef:React.useRef,useCallback:React.useCallback,useWorkspaceMotion:()=>({}),window:undefined,document:undefined},true);
-const button=controls.IntroScene({onDone(){done++},onStart(){started++},canStart:()=>true});const cleanup=effects[0]();
-assert.equal(calls.length,5);assert.equal(started,1);assert.equal(calls[0].target,scope.current);assert.equal(calls[0].options.duration,6.8);assert.equal(calls[0].keyframes.visibility.at(-1),'hidden');assert.equal(calls[0].keyframes.opacity.at(-1),0);
-assert.ok(calls[0].options.duration*(1-calls[0].options.times.at(-2))>=2,'The scene dissolves into the workspace over at least two seconds');
-assert.deepEqual(calls[0].options.ease,['easeOut','linear','easeInOut','linear'],'Per-keyframe easing keeps the 4.6s fade boundary on a linear overall timeline');
-for(const call of calls){assert.ok((call.options.delay||0)+call.options.duration<=calls[0].options.duration);assert.ok(!('repeat' in call.options));if(typeof call.target==='string')assert.match(call.target,/^\.launch-intro__/);assert.ok(!('x' in call.keyframes)&&!('scaleX' in call.keyframes));}
-const titleCall=calls.find(call=>call.target==='.launch-intro__title'),rimCall=calls.find(call=>call.target==='.launch-intro__title-light');
-assert.ok(titleCall.options.delay>0&&titleCall.options.delay+titleCall.options.duration>calls.find(call=>call.target==='.launch-intro__tube').options.duration,'The overhead light leads the title reveal');
-assert.ok(Math.max(...titleCall.keyframes.opacity)<1&&Math.max(...rimCall.keyframes.opacity)<1,'Brand lettering remains an intentionally subdued part of the lighting composition');
+// Execute the original owner integration. OGL and Motion are mocked only at
+// their boundaries; real GPU compilation, light appearance and native input
+// remain browser evidence. The actual sampler is shared with the adapter QA.
+function sceneHarness({ available=true, healthy=true, immediate=false, throwClock=false }={}) {
+ const effects=[],calls=[],samples=[],styles=new Map();let done=0,started=0,disposed=0,stopped=0,finish;
+ const root={dataset:{},style:{opacity:'',setProperty:(key,value)=>styles.set(key,value)},
+   querySelector:selector=>selector.includes('canvas')?{}:{getBoundingClientRect:()=>({top:0})}};
+ const scope={current:root};
+ const end=Object.assign(immediate?Promise.resolve():new Promise(resolve=>{finish=resolve}),{stop(){stopped++}});
+ let update;
+ const code=compile({React,useEffect:fn=>effects.push(fn),useAnimate:()=>[scope,(target,keyframes,options)=>{calls.push({target,keyframes,options});return end;}],
+   animateValue:(from,to,options)=>{if(throwClock)throw new Error('clock unavailable');calls.push({from,to,options});update=options.onUpdate;return{stop(){stopped++}}},
+   LAUNCH_LIGHTING,sampleLaunchLighting,
+   createNeonLightField:(_canvas,options)=>{assert.equal(options.secondaryStrength,.18);return available?{render:sample=>{samples.push(sample);return healthy},dispose(){disposed++}}:null}},true);
+ const props={onDone(){done++},onStart(){started++},canStart:()=>true};
+ return{code,props,root,effects,calls,samples,styles,get done(){return done},get started(){return started},get disposed(){return disposed},get stopped(){return stopped},
+   start(next=props){const button=code.IntroScene(next),cleanup=effects.at(-1)();return{button,cleanup}},tick:t=>update(t),finish:()=>finish?.()};
+}
+const h=sceneHarness(),{button,cleanup}=h.start();
+assert.equal(h.calls.length,2);assert.equal(h.started,1);
+assert.equal(h.calls[0].target,h.root);assert.equal(h.calls[0].options.duration,LAUNCH_LIGHTING.duration);
+assert.equal(h.calls[0].keyframes.visibility.at(-1),'hidden');
+assert.equal(h.calls[0].keyframes.opacity,undefined,'Native safety endpoint does not apply a second scene fade');
+assert.equal(h.calls[1].from,0);assert.equal(h.calls[1].to,LAUNCH_LIGHTING.duration);
+assert.equal(h.calls[1].options.duration,LAUNCH_LIGHTING.duration);assert.equal(h.calls[1].options.ease,'linear');
+assert.equal(h.root.style.opacity,'0');assert.equal(h.samples.length,1,'Compile/first draw completes before the clock starts');
+h.tick(3.5);assert.deepEqual(h.samples.at(-1),sampleLaunchLighting(3.5));assert.equal(h.root.dataset.lightField,'ready');
+h.tick(6.5);assert.equal(h.root.style.opacity,String(sampleLaunchLighting(6.5).scene),'Single sampled fade surrounds GPU and fallback');
+assert.equal(h.styles.get('--launch-rim'),String(sampleLaunchLighting(6.5).rim));
 let prevented=false,stopped=false,underlyingSaves=0;
 assert.equal(button.props.onPointerDown,undefined,'Native pointer sequence keeps the cover until its completed click');
 button.props.onClick({preventDefault(){prevented=true},stopPropagation(){stopped=true}});if(!stopped)underlyingSaves++;
-assert.equal(prevented,true);assert.equal(stopped,true);assert.equal(underlyingSaves,0);assert.equal(done,1);
-cleanup();assert.equal(stoppedControls,5,'Every returned Motion control is stopped by standard cleanup');finish();await Promise.resolve();await Promise.resolve();assert.equal(done,1,'Stale completion after unmount cannot dismiss a later scene');
+assert.equal(prevented,true);assert.equal(stopped,true);assert.equal(underlyingSaves,0);assert.equal(h.done,1);
+cleanup();assert.equal(h.stopped,2,'Both Motion clocks are stopped');assert.equal(h.disposed,1,'GPU resources released once');
+const before=h.samples.length;h.tick(1);assert.equal(h.samples.length,before,'Stale frame callbacks are inert');
+h.finish();await Promise.resolve();await Promise.resolve();assert.equal(h.done,1,'Stale completion cannot dismiss a later scene');
+for(const config of [{available:false},{healthy:false}]){
+ const fallback=sceneHarness(config),run=fallback.start();
+ assert.equal(fallback.root.dataset.lightField,'fallback');fallback.tick(3);
+ assert.equal(fallback.styles.get('--launch-room'),String(sampleLaunchLighting(3).room),'CSS fallback receives the identical finite light envelope');
+ assert.equal(fallback.disposed,config.available===false?0:1);run.cleanup();
+ assert.equal(fallback.disposed,config.available===false?0:1,'A failed renderer is not disposed twice by owner cleanup');
+}
+const expired=sceneHarness();let startChecks=0;
+expired.start({...expired.props,canStart:()=>++startChecks===1});
+assert.equal(expired.samples.length,1);assert.equal(expired.calls.length,0);assert.equal(expired.started,0);assert.equal(expired.disposed,1);assert.equal(expired.done,1,'Cold compilation cannot start a late cover');
+const failedClock=sceneHarness({throwClock:true}),failedCleanup=failedClock.start().cleanup;
+assert.equal(failedClock.done,1);assert.equal(failedClock.disposed,1);assert.equal(failedClock.started,0);failedCleanup();
 
 // Late lazy chunks recheck the actual environmental gate before any animation.
 for(const mutation of [b=>b.age(3000),b=>{b.window.navigator.userActivation.hasBeenActive=true},b=>b.focus(false)]){
  const b=browser();mutation(b);let skipped=0;const effects=[];
- const component=compile({React,useEffect:fn=>effects.push(fn),useAnimate:()=>[scope,()=>assert.fail('Late scene must never animate')]},true);
+ const component=compile({React,useEffect:fn=>effects.push(fn),useAnimate:()=>[{current:{}},()=>assert.fail('Late scene must never animate')]},true);
  component.IntroScene({onDone(){skipped++},onStart(){assert.fail('Skipped scene cannot start')},canStart:()=>real.launchIntroEligible(b.window,b.document)});effects[0]();assert.equal(skipped,1);
 }
+const pan=sceneHarness(),panButton=pan.code.IntroScene({...pan.props,canStart:()=>false});panButton.props.onPointerCancel();assert.equal(pan.done,1,'Browser-cancelled touch dismisses without custom gesture recognition');
 const completedEnv=browser(),completedRun=hooks(completedEnv,{ready:true,enabled:true});completedRun.render();const completedProps=completedRun.render().props.children.props;
-const panEffects=[],panRun=compile({React,useEffect:fn=>panEffects.push(fn),useAnimate:()=>[scope,()=>assert.fail('Only the native pointer-cancel contract is under test')]},true);let panDismissed=0;const panButton=panRun.IntroScene({onDone(){panDismissed++},onStart(){},canStart:()=>false});panButton.props.onPointerCancel();assert.equal(panDismissed,1,'A browser-cancelled touch gesture dismisses without implementing gesture recognition');
-const completedEffects=[],completedControls=compile({React,useEffect:fn=>completedEffects.push(fn),useAnimate:()=>[scope,()=>Object.assign(Promise.resolve(),{stop(){}})]},true);
-completedControls.IntroScene(completedProps);const completedCleanup=completedEffects[0]();await Promise.resolve();await Promise.resolve();assertTerminal(completedEnv,completedRun);completedCleanup();completedRun.dispose();
+const complete=sceneHarness({immediate:true}),completeCleanup=complete.start(completedProps).cleanup;
+await Promise.resolve();await Promise.resolve();assertTerminal(completedEnv,completedRun);completeCleanup();completedRun.dispose();
 
 let load;const fallbackEffects=[];compile({React,useEffect:fn=>fallbackEffects.push(fn),lazy:loader=>{load=loader;return()=>null},Suspense:React.Suspense});
 const missing=await load(),missingEnv=browser(),missingRun=hooks(missingEnv,{ready:true,enabled:true});missingRun.render();const missingProps=missingRun.render().props.children.props;

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Made pinned secret-scanner downloads resilient to release-endpoint failures with bounded retries and a separately pinned official GitHub Assets API fallback. Every downloaded or cached archive still requires its original SHA256; operational failures identify their safe stage/status without printing response content or credentials.
 - Reworked the opening after observing the public reference in desktop Chrome: two bright pink-white edge lamps cast layered elliptical pink/violet light around a flat, dark NeonWorth title. Width-bounded light depths retain their shape on phones. Corrected early spill seams, visible ignition contrast and CSS fallback gradient validity/clipping; sampled rendering and native Chrome application checks are recorded separately.
 - Added an atmospheric, once-per-session NeonWorth opening with two localized ignition strikes. An original OGL light field supplies the light while Motion drives the 7.6-second sequence and its final 2.2-second fade, with a softer CSS fallback. Native skipping and Quiet/reduced-motion support remain available while financial data loads independently.
 - Documented flexible neon design principles that give original artwork room for focused color, shadow and deliberate pacing while preserving readable financial information and stable controls.

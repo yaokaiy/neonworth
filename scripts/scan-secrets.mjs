@@ -4,6 +4,7 @@ import { copyFile, lstat, mkdir, mkdtemp, readFile, readlink, rm, writeFile } fr
 import { dirname, join, relative, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { setTimeout as delay } from 'node:timers/promises';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const configFile = join(root, '.gitleaks.toml');
@@ -12,6 +13,51 @@ const digest = data => createHash('sha256').update(data).digest('hex');
 
 export function verifyArchive(data, expected) {
   if (!/^[a-f0-9]{64}$/.test(expected) || digest(data) !== expected) throw new Error('Secret scanner archive checksum mismatch.');
+}
+
+const transientStatuses = new Set([408, 429, 500, 502, 503, 504]);
+class ScannerDownloadUnavailable extends Error {
+  constructor(attempts) {
+    // Only our endpoint labels and bounded HTTP status/transport enums enter
+    // this message, never a response body, URL or caught exception message.
+    super(`Pinned scanner download unavailable (${attempts.join('; ')}).`);
+  }
+}
+
+export async function downloadScannerArchive(asset, { fetchImpl = globalThis.fetch, wait = delay } = {}) {
+  if (!Number.isSafeInteger(asset.api_id) || asset.api_id <= 0) throw new Error('Pinned scanner asset ID is invalid.');
+  const sources = [
+    { label: 'release', url: `https://github.com/gitleaks/gitleaks/releases/download/v${pin.version}/${asset.file}` },
+    { label: 'assets-api', url: `https://api.github.com/repos/gitleaks/gitleaks/releases/assets/${asset.api_id}`,
+      headers: { Accept: 'application/octet-stream' } },
+  ];
+  const attempts = [];
+  for (const source of sources) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      let data, reason = 'transport', retry = true;
+      try {
+        // Four attempts remain bounded below the regression child's 120s
+        // deadline, including its real scanner-canary execution afterward.
+        const response = await fetchImpl(source.url, { headers: source.headers, signal: AbortSignal.timeout(20_000) });
+        if (response.ok) data = Buffer.from(await response.arrayBuffer());
+        else {
+          reason = Number.isInteger(response.status) && response.status >= 100 && response.status <= 599 ? `HTTP ${response.status}` : 'response';
+          retry = transientStatuses.has(response.status);
+          try { await response.body?.cancel(); } catch { /* No response content enters diagnostics. */ }
+        }
+      } catch { /* Transport/read errors may contain sensitive URLs or headers. */ }
+      if (data) {
+        // An integrity failure is terminal: do not retry or fall back after a
+        // successful response fails the reviewed checksum.
+        verifyArchive(data, asset.sha256);
+        return data;
+      }
+      attempts.push(`${source.label}: ${reason}`);
+      if (!retry || attempt === 1) break;
+      await wait(500);
+    }
+  }
+  throw new ScannerDownloadUnavailable(attempts);
 }
 
 // Never forward scanner stdout/stderr, Match, Secret, commit messages, or code
@@ -36,10 +82,7 @@ export async function scannerBinary(temporary) {
   try { archive = await readFile(archivePath); }
   catch (error) { if (error.code !== 'ENOENT') throw error; }
   if (!archive) {
-    const response = await fetch(`https://github.com/gitleaks/gitleaks/releases/download/v${pin.version}/${asset.file}`, { signal: AbortSignal.timeout(60_000) });
-    if (!response.ok) throw new Error('Could not download the pinned secret scanner.');
-    archive = Buffer.from(await response.arrayBuffer());
-    verifyArchive(archive, asset.sha256);
+    archive = await downloadScannerArchive(asset);
     await writeFile(archivePath, archive, { flag: 'wx', mode: 0o600 });
   }
   verifyArchive(archive, asset.sha256);
@@ -80,22 +123,28 @@ async function scan(binary, temporary, kind, source) {
 
 async function main() {
   const temporary = await mkdtemp(join(tmpdir(), 'neonworth-secret-scan-'));
+  let phase = 'scanner bootstrap';
   try {
     const binary = await scannerBinary(temporary);
+    phase = 'source snapshot';
     const source = join(temporary, 'source');
     await mkdir(source);
     await snapshotSource(source);
-    const locations = [...await scan(binary, temporary, 'git', root), ...await scan(binary, temporary, 'dir', source)];
+    phase = 'history scan';
+    const history = await scan(binary, temporary, 'git', root);
+    phase = 'source scan';
+    const locations = [...history, ...await scan(binary, temporary, 'dir', source)];
     if (locations.length) {
       console.error(`Secret scan found ${locations.length} findings. Values and code are withheld.`);
       for (const location of locations.slice(0, 100)) console.error(location);
       if (locations.length > 100) console.error('Additional locations omitted.');
       process.exitCode = 1;
     } else console.log(`Gitleaks ${pin.version}: no findings in reachable Git history or current source.`);
-  } catch {
+  } catch (error) {
     // Errors can contain response bodies or subprocess diagnostics. Do not relay
     // them; operational failures block the gate just like detected secrets.
-    console.error('Secret scan failed to complete. Check the pinned download, checksum, Git history, and scanner configuration; no source or credential values were printed.');
+    if (error instanceof ScannerDownloadUnavailable) console.error(error.message);
+    console.error(`Secret scan failed during ${phase}; no source or credential values were printed.`);
     process.exitCode = 1;
   } finally { await rm(temporary, { recursive: true, force: true }); }
 }

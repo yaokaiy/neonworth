@@ -10,7 +10,7 @@ import './launch-intro.css';
 // Original light composition; OGL renders it and Motion owns its finite clock.
 // No paid component source is incorporated. Explicit control cleanup also
 // covers the pinned mini implementation's unregistered scope controls.
-export type IntroSceneProps = { onDone: () => void; onStart: () => void; canStart: () => boolean };
+export type IntroSceneProps = { onDone: (reason?: string) => void; onStart: () => void; canStart: () => boolean };
 export function IntroScene({ onDone, onStart, canStart }: IntroSceneProps) {
   const [scope, animate] = useAnimate<HTMLButtonElement>();
   useEffect(() => {
@@ -23,7 +23,7 @@ export function IntroScene({ onDone, onStart, canStart }: IntroSceneProps) {
       field = null;
     };
     try {
-      if (!canStart() || !scope.current) { onDone(); return; }
+      if (!canStart() || !scope.current) { onDone('unavailable'); return; }
       const root = scope.current;
       const canvas = root.querySelector<HTMLCanvasElement>('.launch-intro__canvas');
       const top = root.querySelector<HTMLElement>('.launch-intro__tube--primary');
@@ -54,7 +54,11 @@ export function IntroScene({ onDone, onStart, canStart }: IntroSceneProps) {
       // Compile and draw before starting either clock, so initial compilation
       // cannot eat the ignition strikes. Missing WebGL uses the same CSS clock.
       paint(0);
-      if (!canStart()) { stop(); onDone(); return; }
+      // The optional CSS is part of scene readiness too. An unavailable or
+      // suppressed stylesheet must not turn decoration into normal-flow UI.
+      const presentation = root.ownerDocument.defaultView?.getComputedStyle(root);
+      if (!presentation || presentation.position !== 'fixed' || presentation.display === 'none') { stop(); onDone('unavailable'); return; }
+      if (!canStart()) { stop(); onDone('unavailable'); return; }
       const end = animate(root, { visibility: ['visible', 'visible', 'hidden'] },
         { duration: LAUNCH_LIGHTING.duration, times: [0, .999, 1], ease: 'linear' });
       controls.push(end);
@@ -64,14 +68,14 @@ export function IntroScene({ onDone, onStart, canStart }: IntroSceneProps) {
       onStart();
       // The independent native endpoint hides the hit surface even if the JS
       // light clock stalls. No overlay can remain as an invisible click trap.
-      Promise.resolve(end).then(() => { if (active) onDone(); }, () => { if (active) onDone(); });
-    } catch { stop(); onDone(); }
+      Promise.resolve(end).then(() => { if (active) onDone('complete'); }, () => { if (active) onDone('unavailable'); });
+    } catch { stop(); onDone('unavailable'); }
     return () => { active = false; stop(); };
   }, [animate, onDone, onStart, canStart, scope]);
 
-  return <button ref={scope} type="button" tabIndex={-1} className="launch-intro" aria-label="Skip introduction"
-    onPointerCancel={onDone}
-    onClick={event => { event.preventDefault(); event.stopPropagation(); onDone(); }}>
+  return <button ref={scope} type="button" tabIndex={0} className="launch-intro" aria-label="Skip introduction"
+    onPointerCancel={() => onDone('input')}
+    onClick={event => { event.preventDefault(); event.stopPropagation(); onDone('input'); }}>
     <span className="launch-intro__light" aria-hidden="true">
       <canvas className="launch-intro__canvas" />
       <span className="launch-intro__tube launch-intro__tube--primary" />

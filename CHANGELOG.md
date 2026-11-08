@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Corrected the opening lifecycle to make a new decision on each full page open/reload and keep the workspace concealed and isolated until completion or skip. A first-paint document gate replaces the persisted seen flag; internal report navigation and tab return do not replay it. Quiet/reduced-motion and bounded failure recovery remain part of the contract. Reviewed application checkpoint `0383b1a` and PR #4 have passing local checks and bounded native Chrome evidence; exact CI and Pages publication remain separate gates recorded in `docs/TASKS.md` and the PR release receipt.
+
 - Made pinned secret-scanner downloads resilient to release-endpoint failures with bounded retries and a separately pinned official GitHub Assets API fallback. Every downloaded or cached archive still requires its original SHA256; operational failures identify their safe stage/status without printing response content or credentials.
 - Reworked the opening after observing the public reference in desktop Chrome: two bright pink-white edge lamps cast layered elliptical pink/violet light around a flat, dark NeonWorth title. Width-bounded light depths retain their shape on phones. Corrected early spill seams, visible ignition contrast and CSS fallback gradient validity/clipping; sampled rendering and native Chrome application checks are recorded separately.
 - Added an atmospheric, once-per-session NeonWorth opening with two localized ignition strikes. An original OGL light field supplies the light while Motion drives the 7.6-second sequence and its final 2.2-second fade, with a softer CSS fallback. Native skipping and Quiet/reduced-motion support remain available while financial data loads independently.

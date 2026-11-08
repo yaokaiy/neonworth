@@ -1,0 +1,22 @@
+/* Critical first-paint presentation, independent of the lazy cinematic chunk.
+   The opaque backing stays through its final fade. Only the ornament animates. */
+html { --neonworth-launch-gate: ready; }
+html[data-launch-gate="pending"] { background: #110a18; overflow: hidden; }
+html[data-launch-gate="pending"] [data-launch-workspace],
+html[data-launch-gate="pending"] .app.unified-dashboard.personal-workspace.personal-experience { visibility: hidden; }
+.launch-gate { display: none; }
+html[data-launch-gate="pending"] .launch-gate {
+  display: grid; place-content: center; position: fixed; inset: 0;
+  width: 100%; height: 100%; z-index: 1000; margin: 0; padding: 24px;
+  border: 0; border-radius: 0; background: #110a18; color: #f3eaf4;
+  font: 16px/1.5 system-ui, sans-serif; cursor: pointer;
+}
+.launch-gate__skip { position: absolute; right: 24px; bottom: 24px; font-size: 13px; }
+html[data-launch-phase="playing"] .launch-gate__preparing { visibility: hidden; }
+html[data-launch-phase="playing"] .launch-gate__skip { visibility: hidden; }
+@media print, (prefers-reduced-motion: reduce), (forced-colors: active) {
+  html[data-launch-gate="pending"] { overflow: auto; }
+  html[data-launch-gate="pending"] [data-launch-workspace],
+  html[data-launch-gate="pending"] .app.unified-dashboard.personal-workspace.personal-experience { visibility: visible; }
+  html[data-launch-gate="pending"] .launch-gate { display: none; }
+}

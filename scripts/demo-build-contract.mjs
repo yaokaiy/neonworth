@@ -1,6 +1,6 @@
 import ts from 'typescript';
 import { relative, join } from 'node:path';
-import { lstatSync, readdirSync } from 'node:fs';
+import { lstatSync, readdirSync, readFileSync } from 'node:fs';
 
 export function demoBasePath(value = '/neonworth/') {
   if (value !== '/' && (!/^\/[A-Za-z0-9._-]+\/$/.test(value) || ['/../', '/./'].includes(value))) throw new Error('DEMO_BASE_PATH must be / or one repository path such as /neonworth/.');
@@ -12,7 +12,7 @@ export function inferredDemoBase(repository = '') {
   return demoBasePath(`/${name || 'neonworth'}/`);
 }
 export const DEMO_PUBLIC_ASSETS = Object.freeze([
-  'favicon.svg', 'fonts/space-grotesk-variable.woff2', 'fonts/README.md', 'fonts/OFL-space-grotesk.txt',
+  'launch-gate.js', 'launch-gate.css', 'favicon.svg', 'fonts/space-grotesk-variable.woff2', 'fonts/README.md', 'fonts/OFL-space-grotesk.txt',
 ]);
 export function verifyDemoPublicAssets(directory) {
   const found = new Set();
@@ -27,6 +27,9 @@ export function verifyDemoPublicAssets(directory) {
   };
   visit();
   for (const asset of DEMO_PUBLIC_ASSETS) if (!found.has(asset)) throw new Error('A required public demo asset is missing.');
+  for (const asset of DEMO_PUBLIC_ASSETS.filter(path => path.endsWith('.js'))) {
+    if (inspectDemoSource(readFileSync(join(directory, asset), 'utf8'), asset).length) throw new Error('Unadapted network access entered a public demo script.');
+  }
   // _headers is an explicitly known production-only file, never emitted below.
   return [...DEMO_PUBLIC_ASSETS];
 }

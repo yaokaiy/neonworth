@@ -112,14 +112,18 @@ const calls=[],effects=[],scope={current:{decorativeButton:true}};let finish,don
 const completion=new Promise(resolve=>{finish=resolve});completion.stop=()=>{stoppedControls++};
 const controls=compile({React,useEffect:fn=>effects.push(fn),useAnimate:()=>[scope,(target,keyframes,options)=>{calls.push({target,keyframes,options});return completion;}],useState:React.useState,useRef:React.useRef,useCallback:React.useCallback,useWorkspaceMotion:()=>({}),window:undefined,document:undefined},true);
 const button=controls.IntroScene({onDone(){done++},onStart(){started++},canStart:()=>true});const cleanup=effects[0]();
-assert.equal(calls.length,4);assert.equal(started,1);assert.equal(calls[0].target,scope.current);assert.equal(calls[0].options.duration,1.8);assert.equal(calls[0].keyframes.visibility.at(-1),'hidden');assert.equal(calls[0].keyframes.opacity.at(-1),0);
-for(const call of calls){assert.ok((call.options.delay||0)+call.options.duration<=1.8);assert.ok(!('repeat' in call.options));if(typeof call.target==='string')assert.match(call.target,/^\.launch-intro__/);assert.ok(!('x' in call.keyframes)&&!('scaleX' in call.keyframes));}
-assert.equal(calls.find(call=>call.target==='.launch-intro__title').options.delay+.4,.8,'Title is visible by800ms');
+assert.equal(calls.length,5);assert.equal(started,1);assert.equal(calls[0].target,scope.current);assert.equal(calls[0].options.duration,6.8);assert.equal(calls[0].keyframes.visibility.at(-1),'hidden');assert.equal(calls[0].keyframes.opacity.at(-1),0);
+assert.ok(calls[0].options.duration*(1-calls[0].options.times.at(-2))>=2,'The scene dissolves into the workspace over at least two seconds');
+assert.deepEqual(calls[0].options.ease,['easeOut','linear','easeInOut','linear'],'Per-keyframe easing keeps the 4.6s fade boundary on a linear overall timeline');
+for(const call of calls){assert.ok((call.options.delay||0)+call.options.duration<=calls[0].options.duration);assert.ok(!('repeat' in call.options));if(typeof call.target==='string')assert.match(call.target,/^\.launch-intro__/);assert.ok(!('x' in call.keyframes)&&!('scaleX' in call.keyframes));}
+const titleCall=calls.find(call=>call.target==='.launch-intro__title'),rimCall=calls.find(call=>call.target==='.launch-intro__title-light');
+assert.ok(titleCall.options.delay>0&&titleCall.options.delay+titleCall.options.duration>calls.find(call=>call.target==='.launch-intro__tube').options.duration,'The overhead light leads the title reveal');
+assert.ok(Math.max(...titleCall.keyframes.opacity)<1&&Math.max(...rimCall.keyframes.opacity)<1,'Brand lettering remains an intentionally subdued part of the lighting composition');
 let prevented=false,stopped=false,underlyingSaves=0;
 assert.equal(button.props.onPointerDown,undefined,'Native pointer sequence keeps the cover until its completed click');
 button.props.onClick({preventDefault(){prevented=true},stopPropagation(){stopped=true}});if(!stopped)underlyingSaves++;
 assert.equal(prevented,true);assert.equal(stopped,true);assert.equal(underlyingSaves,0);assert.equal(done,1);
-cleanup();assert.equal(stoppedControls,4,'Every returned Motion control is stopped by standard cleanup');finish();await Promise.resolve();await Promise.resolve();assert.equal(done,1,'Stale completion after unmount cannot dismiss a later scene');
+cleanup();assert.equal(stoppedControls,5,'Every returned Motion control is stopped by standard cleanup');finish();await Promise.resolve();await Promise.resolve();assert.equal(done,1,'Stale completion after unmount cannot dismiss a later scene');
 
 // Late lazy chunks recheck the actual environmental gate before any animation.
 for(const mutation of [b=>b.age(3000),b=>{b.window.navigator.userActivation.hasBeenActive=true},b=>b.focus(false)]){
@@ -141,7 +145,7 @@ const css=postcss.parse(await readFile('app/launch-intro.css','utf8'));
 const base=css.nodes.find(node=>node.type==='rule'&&node.selector==='.launch-intro');const declarations=Object.fromEntries(base.nodes.filter(node=>node.type==='decl').map(node=>[node.prop,node.value]));
 assert.equal(declarations.display,'none');assert.equal(declarations.visibility,'hidden');assert.equal(declarations.opacity,'0');assert.equal(declarations['pointer-events'],'auto');assert.equal(declarations.position,'fixed');
 css.walkRules(rule=>assert.ok(rule.selector.includes('launch-intro'),'All styling is isolated from financial content'));
-css.walkDecls('display',decl=>{if(decl.value==='grid'&&decl.parent.selector.includes('body:has')){assert.match(decl.parent.parent.params,/prefers-reduced-motion: no-preference/);assert.match(decl.parent.parent.params,/forced-colors: none/);assert.match(decl.parent.parent.params,/screen/);}});
+css.walkDecls('display',decl=>{if(decl.value!=='none'&&decl.parent.selector.includes('body:has')){assert.match(decl.parent.parent.params,/prefers-reduced-motion: no-preference/);assert.match(decl.parent.parent.params,/forced-colors: none/);assert.match(decl.parent.parent.params,/screen/);}});
 assert.doesNotMatch(source+sceneSource,/\bsetTimeout\b|\bsetInterval\b|requestAnimationFrame|\.animate\(/,'Our code has no animation scheduler or raw native engine');
 assert.match(sceneSource,/from 'motion\/react-mini'/);assert.doesNotMatch(source,/motion\/react/,'Returning users must not eagerly load Motion');
 console.log('Launch intro: actual once/skip policy, session failure, hydration grace, StrictMode, dismissal and cleanup; real SSR/native-button contract; scoped finite Motion endpoint and isolated policy CSS passed. Browser painting remains separate.');

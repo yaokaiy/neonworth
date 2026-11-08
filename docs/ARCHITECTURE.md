@@ -44,9 +44,11 @@ Before increasing limits, measure payload size, Worker memory/CPU and browser in
 
 ## Presentation
 
+The [design principles](NEON_DESIGN.md) distinguish artistic expression from financial communication. Neonworth is a personal neon workspace; atmosphere and visual character matter alongside utility. Decorative brand lettering may sit barely visible in deep shadow or behind light and occlusion. A focused violet/pink composition is valid without using every palette color. Financial figures, controls and status meanings retain readable, stable treatment.
+
 Financial values and chart geometry are static. Binary rain is isolated from report layout and pauses for quiet/reduced-motion preferences, hidden tabs and other supported visibility conditions. CSS color roles distinguish financial data and status from decoration. Amount hiding is a display control; it is not anonymization or encryption.
 
-The optional launch reveal is a separate layout sibling, lazy-loaded after its once-per-session and motion-policy checks. Motion's React mini API animates only that scene; native button behavior handles skipping it. Loading and rendering financial records proceed independently. Its implementation and pending desktop checks are documented in [the launch guide](LAUNCH_INTRO.md).
+The optional launch reveal is a separate layout sibling, lazy-loaded after its once-per-session and motion-policy checks. Its dominant overhead lamp, shadowed title and extended fade into the workspace use a generous finite sequence; ordinary control-transition budgets do not govern this opening artwork. Motion's React mini API animates only that scene; native button behavior handles skipping it. Loading and rendering financial records proceed independently, with no animation of the workspace shell or dialog ancestors. Its implementation and pending desktop checks are documented in [the launch guide](LAUNCH_INTRO.md). Artwork remains original; dependency licenses and the exclusion of paid component source remain unchanged.
 
 ## Testing
 

@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-- Added a brief, once-per-session NeonWorth title reveal with original neon lighting, immediate dismissal and Quiet/reduced-motion support.
+- Added an atmospheric, once-per-session NeonWorth opening: a dominant overhead neon lamp, barely visible lettering in deep shadow, and a longer, slow fade into the workspace. Native skipping and Quiet/reduced-motion support remain available while financial data loads independently.
+- Documented flexible neon design principles that give original artwork room for focused color, shadow and deliberate pacing while preserving readable financial information and stable controls.
 - Refined the project introduction around its cyberpunk neon design, Matrix-inspired binary rain and personal finance workflows; clarified the demo and ChatGPT entry points.
 
 ## 0.2.0-alpha.1

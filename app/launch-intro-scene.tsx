@@ -20,14 +20,16 @@ export function IntroScene({ onDone, onStart, canStart }: IntroSceneProps) {
       if (!canStart()) { onDone(); return; }
       // Root is always the last animation to finish. Its native endpoint is
       // hidden, so the hit surface disappears even if JS cannot finish cleanup.
+      // Per-keyframe easing preserves the authored 4.6s-to-6.8s dissolve.
       const end = animate(scope.current, {
         opacity: [0, 1, 1, 0],
         visibility: ['visible', 'visible', 'visible', 'hidden'],
-      }, { duration: 1.8, times: [0, .08, .69, 1], ease: 'linear' });
+      }, { duration: 6.8, times: [0, .04, 4.6 / 6.8, 1], ease: ['easeOut', 'linear', 'easeInOut', 'linear'] });
       controls.push(end);
-      controls.push(animate('.launch-intro__tube', { transform: ['scaleX(0)', 'scaleX(1)'], opacity: [0, 1] }, { duration: .42, ease: 'easeOut' }));
-      controls.push(animate('.launch-intro__spill', { transform: ['scaleY(0)', 'scaleY(1)'], opacity: [0, 1] }, { delay: .25, duration: .55, ease: 'easeOut' }));
-      controls.push(animate('.launch-intro__title', { opacity: [0, 1] }, { delay: .4, duration: .4, ease: 'easeOut' }));
+      controls.push(animate('.launch-intro__tube', { transform: ['scaleX(0)', 'scaleX(1)'], opacity: [0, 1] }, { duration: 2.5, ease: 'easeInOut' }));
+      controls.push(animate('.launch-intro__spill', { transform: ['scaleY(.03)', 'scaleY(1)'], opacity: [0, 1] }, { delay: .35, duration: 3, ease: 'easeOut' }));
+      controls.push(animate('.launch-intro__title', { opacity: [0, .78] }, { delay: 1.2, duration: 2.15, ease: 'easeInOut' }));
+      controls.push(animate('.launch-intro__title-light', { opacity: [0, .34, .55, .4] }, { delay: 1.4, duration: 2.3, times: [0, .4, .76, 1], ease: 'easeInOut' }));
       onStart();
       Promise.resolve(end).then(() => { if (active) onDone(); }, () => { if (active) onDone(); });
     } catch { stop(); onDone(); }
@@ -40,7 +42,10 @@ export function IntroScene({ onDone, onStart, canStart }: IntroSceneProps) {
     <span className="launch-intro__light" aria-hidden="true">
       <span className="launch-intro__tube" />
       <span className="launch-intro__spill" />
-      <span className="launch-intro__title">NeonWorth</span>
+      <span className="launch-intro__title">
+        <span className="launch-intro__title-shadow">NeonWorth</span>
+        <span className="launch-intro__title-light">NeonWorth</span>
+      </span>
     </span>
   </button>;
 }

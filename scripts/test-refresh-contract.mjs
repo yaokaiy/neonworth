@@ -49,6 +49,32 @@ assert.equal(built.dataset.coverage.transactions.is_complete_for_query, false);
 assert.deepEqual(built.dataset.incomeEvidence.rsuPrices, base.incomeEvidence.rsuPrices);
 assert.equal(buildRefresh(built.dataset, corrections, run, bundle, now).report.newTransactions, 0);
 assert.equal(refreshWindow(base, new Date('2026-11-01T16:00:00Z')).start, base.dateRange.start, 'First-of-month refresh backfills history');
+// A source revision is valid history: replace overlapping dates, retain dates
+// omitted from the query, and prefer MAX over a differing top-level series.
+for (const useMax of [false, true]) {
+  const historyBase = structuredClone(base), historyBundle = structuredClone(bundle), historyCorrections = structuredClone(corrections);
+  historyBase.netWorthHistory.unshift({ date: '2026-09-30', value: 1750, events: [] });
+  assert.equal(historyBase.netWorthHistory.find(point => point.date === '2026-10-27').value, 1900, 'The saved observation must differ before the source revision');
+  const sourcePoints = [
+    { date: '2026-10-27', net_worth: 1950, first_balance_events: [] },
+    { date: '2026-10-28', net_worth: 2000, first_balance_events: [] },
+  ];
+  historyBundle.netWorth.chart_points = structuredClone(sourcePoints);
+  if (useMax) {
+    historyBundle.netWorth.chart_points[0].net_worth = 1800;
+    historyBundle.netWorth.interval_views = { MAX: { chart_points: sourcePoints } };
+  }
+  const historyBefore = structuredClone({ historyBase, historyBundle, historyCorrections });
+  const historyBuilt = buildRefresh(historyBase, historyCorrections, run, historyBundle, now);
+  assert.deepEqual(historyBuilt.dataset.netWorthHistory, [
+    { date: '2026-09-30', value: 1750, events: [] },
+    { date: '2026-10-27', value: 1950, events: [] },
+    { date: '2026-10-28', value: 2000, events: [] },
+  ], 'The selected source series revises an overlapping date, retains an omitted date and appends a new date');
+  const historyReplay = buildRefresh(historyBuilt.dataset, historyCorrections, run, historyBundle, now);
+  assert.deepEqual(historyReplay.dataset.netWorthHistory, historyBuilt.dataset.netWorthHistory, 'Replaying the same source series leaves net-worth history stable');
+  assert.deepEqual({ historyBase, historyBundle, historyCorrections }, historyBefore, 'History reconciliation cannot mutate the saved source, source widget or corrections');
+}
 // New source-generated category uncertainty must use the same optional path as
 // the earlier import format. Existing flags without a known reason stay intact.
 const categoryBase=structuredClone(base),categoryBundle=structuredClone(bundle);

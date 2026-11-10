@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Clarified refresh history semantics in the task prompt, workflow, collection guide and returned contract: valid source revisions replace overlapping net-worth observations, omitted dates remain, and MAX chart points take precedence. Added a production-merge regression for revised/retained/new dates, both source layouts, stable replay and unchanged inputs. The merge algorithm and validation rules are unchanged.
+- Documented saving and reading back actual scheduler model/effort settings, keeping model choice configurable, and repairing existing copied task instructions in place. Repository or plugin updates do not automatically update saved cloud tasks.
+
 - Corrected the opening lifecycle to make a new decision on each full page open/reload and keep the workspace concealed and isolated until completion or skip. A first-paint document gate replaces the persisted seen flag; internal report navigation and tab return do not replay it. Quiet/reduced-motion and bounded failure recovery remain part of the contract. Reviewed application checkpoint `0383b1a` and PR #4 have passing local checks and bounded native Chrome evidence; exact CI and Pages publication remain separate gates recorded in `docs/TASKS.md` and the PR release receipt.
 
 - Made pinned secret-scanner downloads resilient to release-endpoint failures with bounded retries and a separately pinned official GitHub Assets API fallback. Every downloaded or cached archive still requires its original SHA256; operational failures identify their safe stage/status without printing response content or credentials.
